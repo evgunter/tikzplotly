@@ -2,6 +2,11 @@ import re
 import warnings
 from math import floor
 import numpy as np
+from ._tex import tex_text, get_tikz_colorscale
+
+# Default width and height in pixels for plotly figures
+PLOTLY_DEFAULT_HEIGHT = 450
+PLOTLY_DEFAULT_WIDTH = 700
 
 rep_digit = {'0': 'Z', '1': 'O', '2': 'T', '3': 'Th', '4': 'F', '5': 'Fi', '6': 'S', '7': 'Se', '8': 'E', '9': 'N'}
 rep_digit = dict((re.escape(k), v) for k, v in rep_digit.items())
@@ -87,31 +92,52 @@ def px_to_pt(px):
     if floor(pt) == pt: return int(pt)
     else: return pt
 
+class Colorscale:
+    def __init__(self, colorscale, name="mycolor"):
+        self.colorscale = colorscale
+        self.name = name
 
-def option_dict_to_str(options_dict, sep=" "):
+    def __str__(self):
+        return get_tikz_colorscale(self.colorscale, self.name)
+
+    def __eq__(self, other):
+        return self.colorscale == other.colorscale and self.name == other.name
+
+def dict_to_tex_str(dictionary, sep=" "):
     """Convert a dictionary of options to a string of options for TikZ.
 
     Parameters
     ----------
-    options_dict
-        dictionary of options
+    dictionary
+        dictionary of options to convert to tex format
     sep, optional
         separator between options, by default " "
 
     Returns
     -------
     string
-        string of options for TikZ
+        string representing the dictionary for TikZ. Does not include the enclosing brackets, so it can be used with both [] and {}
     """
-    options = ""
-    for key, value in options_dict.items():
+    lst = []
+    for key, value in dictionary.items():
         if value is None:
-            options += f"{key},{sep}"
+            lst.append(f"{key}")
+        elif isinstance(value, dict):
+            lst.append(f"{key}=" + "{" + f"{dict_to_tex_str(value, sep)}" + "}")
+        elif isinstance(value, str):
+            lst.append(f"{key}={tex_text(value)}")
+        elif isinstance(value, list):
+            lst.append(f"{key}=" + "{" + f"{f',{sep}'.join(map(str, value))}" + "}")
+        elif isinstance(value, int) or isinstance(value, float):
+            lst.append(f"{key}={value}")
+        elif isinstance(value, tuple):  # multiple arguments
+            lst.append(f"{key}=" + "".join(["{" + dict_to_tex_str(v, sep) + "}" for v in value]))
+        elif isinstance(value, Colorscale):
+            lst.append(f"{key}={str(value)}")
         else:
-            options += f"{key}={value},{sep}"
-    if options == "":
-        return None
-    return options.strip()[:-1]
+            warnings.warn(f"Converting value {value} of type {type(value)} to string")
+            lst.append(f"{key}={tex_text(str(value))}")
+    return f",{sep}".join(lst)
 
 def get_ticks_str(data, nticks):
     indices = np.arange(len(data))
@@ -130,3 +156,6 @@ def get_ticks_str(data, nticks):
     ticklabels = ticklabels[:-1] + "}"
 
     return ticks, ticklabels
+
+def get_tasks(df, prefix):
+    return [t for t in df.get_column("task").unique() if t.startswith(prefix)]

@@ -6,7 +6,7 @@ from ._marker import marker_symbol_to_tex
 from ._dash import *
 from ._axis import Axis
 from ._data import *
-from ._utils import px_to_pt, option_dict_to_str, sanitize_text
+from ._utils import px_to_pt, dict_to_tex_str, sanitize_text
 from numpy import round
 
 def draw_scatter2d(data_name, scatter, y_name, axis: Axis, color_set):
@@ -82,7 +82,7 @@ def draw_scatter2d(data_name, scatter, y_name, axis: Axis, color_set):
             mark_option_dict["opacity"] = round(opacity, 2)
 
         if mark_option_dict != {}:
-            mark_options = option_dict_to_str(mark_option_dict)
+            mark_options = dict_to_tex_str(mark_option_dict)
             options_dict["mark options"] = f"{{{mark_options}}}"
 
     elif mode == "lines":
@@ -122,7 +122,7 @@ def draw_scatter2d(data_name, scatter, y_name, axis: Axis, color_set):
     if scatter.showlegend is False:
         options_dict["forget plot"] = None
 
-    options = option_dict_to_str(options_dict)
+    options = dict_to_tex_str(options_dict)
     code += tex_addplot(data_name, type="table", options=options, type_options=f"y={sanitize_text(y_name)}")
 
     if scatter.text is not None:

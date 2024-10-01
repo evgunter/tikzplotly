@@ -1,6 +1,8 @@
+from warnings import warn
+
 from ._color import convert_color
-from ._tex import tex_begin_environment
-from ._utils import sanitize_TeX_text, option_dict_to_str
+from ._tex import tex_begin_environment, tex_end_environment
+from ._utils import sanitize_TeX_text, dict_to_tex_str
 class Axis():
 
     def __init__(self, layout, colors_set, axis_options=None):
@@ -97,9 +99,83 @@ class Axis():
         value
             value of the option, can be None
         """
+        if option in self.options and value != self.options[option]:
+            warn(f"Option {option} already exists. Overwriting '{self.options[option]}' with '{value}'.")
         self.options[option] = value
 
-    def open_environment(self, stack_env):
+    def get_option(self, option):
+        """Get the value of an option of the axis.
+
+        Parameters
+        ----------
+        option
+            name of the option
+
+        Returns
+        -------
+            value of the option
+        """
+        return self.options.get(option, None)
+
+    def remove_option(self, option):
+        """Remove an option from the axis.
+
+        Parameters
+        ----------
+        option
+            name of the option
+        """
+        if option in self.options:
+            del self.options[option]
+        else:
+            warn(f"Option {option} not found.")
+
+    def update_option(self, option, value, update_fn):
+        """Update an option of the axis.
+
+        Parameters
+        ----------
+        option
+            name of the option
+        value
+            new value of the option
+        update_fn
+            a function which takes the old value and the new value and returns the desired value
+        """
+        if option in self.options:
+            try:
+                self.options[option] = update_fn(self.options[option], value)
+            except Exception as e:
+                warn(f"update_fn failed with error {e}. Overwriting {self.options[option]} with {value}.")
+                self.options[option] = value
+        else:
+            self.options[option] = value
+
+    def append_option(self, option, value: str):
+        """Append a new value to an option of the axis.
+        Lists of values are strings formatted like {value1, value2, value3}
+
+        Parameters
+        ----------
+        option
+            name of the option
+        value
+            value to append to the option
+        """
+        if option in self.options:
+             # Warn if the option is not a list (i.e. the first and last characters are not '{' and '}')
+            if not isinstance(self.options[option], list):
+                warn(f"Option {option} is not a list. Converting to a list.")
+                if "," in self.options[option]:
+                    warn(f"Singleton value being converted to a list contains commas. Result will be interpreted as multiple list elements.")
+                    self.options[option] = [v.strip() for v in ",".split(self.options[option])]
+                else:
+                    self.options[option] = [self.options[option]]
+            self.options[option].append(value)
+        else:
+            self.options[option] = [value]
+
+    def open_environment(self, stack_env, groupplots=False):
         """Open the axis environment.
 
         Parameters
@@ -107,10 +183,31 @@ class Axis():
         stack_env
             stack of environments, to be filled with the axis environment
         """
-        return tex_begin_environment(self.environment, stack_env, options=self.get_options())
+        if groupplots:
+            options = self.get_options_string()
+            if options is not None:
+                return f"\\nextgroupplot[\n{options}\n]\n"
+            else:
+                return "\\nextgroupplot\n"
+
+        else:
+            return tex_begin_environment(self.environment, stack_env, options=self.get_options_string())
+
+    def close_environment(self, stack_env, groupplots=False):
+        """Close the axis environment.
+
+        Parameters
+        ----------
+        stack_env
+            stack of environments, to be filled with the axis environment
+        """
+        if groupplots:
+            return "\n"
+        else:
+            return tex_end_environment(stack_env)
 
 
-    def get_options(self):
+    def get_options_string(self):
         """Get options string for the axis environment.
 
         Returns
@@ -123,5 +220,5 @@ class Axis():
             self.options["xlabel"] = sanitize_TeX_text(self.x_label)
         if self.y_label is not None:
             self.options["ylabel"] = sanitize_TeX_text(self.y_label)
-        options_str = option_dict_to_str(self.options, sep="\n")
+        options_str = dict_to_tex_str(self.options, sep="\n")
         return options_str
