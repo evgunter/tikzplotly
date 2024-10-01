@@ -59,9 +59,12 @@ def get_tikz_code(
         return tuple([(getattr(axis_spec, 'domain', None), getattr(axis_spec, 'range', None)) for axis_spec in axis_specs])
     def key_(axis_idx):
         (yd, yr), (xd, xr) = key(axis_idx)
-        ydl, ydr = yd
-        # flip the sign of the y domain so that the axes are sorted in the correct order
-        return ((-ydr, -ydl), yr, xd, xr)
+        if yd is not None:  # TODO: properly handle this case
+            ydl, ydr = yd
+            # flip the sign of the y domain so that the axes are sorted in the correct order
+            return ((-ydr, -ydl), yr, xd, xr)
+        else:
+            return (yd, yr, xd, xr)
     grouped_axes = [list(g) for _, g in groupby(sorted(axis_idxs, key=key_), key=key_)]
 
     data_container = DataContainer()
@@ -133,17 +136,18 @@ def get_tikz_code(
 
         # check if all the axes in the group agree on showline. if not, issue a warning
         y_keys, x_keys = zip(*[idx_to_axis(axis_idx) for axis_idx in axis_group])
-        x_showline_values = set(getattr(figure_layout, x_key).showline for x_key in x_keys)
-        if len(x_showline_values) > 1:
-            warn("showline is not consistent across all x axes in a group. Defaulting to last value.")
-            if getattr(figure_layout, x_keys[-1]).showline == False:
+        x_showline_values = [getattr(figure_layout, x_key).showline for x_key in x_keys]
+        if x_showline_values:
+            if len(set(x_showline_values)) > 1:
+                warn("showline is not consistent across all x axes in a group. Defaulting to last value.")
+            if x_showline_values.pop() == False:
                 axis.add_option("axis x line", "none")
-        y_showline_values = set(getattr(figure_layout, y_key).showline for y_key in y_keys)
-        if len(y_showline_values) > 1:
-            warn("showline is not consistent across all y axes in a group. Defaulting to last value.")
-            if getattr(figure_layout, y_keys[-1]).showline == False:
+        y_showline_values = [getattr(figure_layout, y_key).showline for y_key in y_keys]
+        if y_showline_values:
+            if len(set(y_showline_values)) > 1:
+                warn("showline is not consistent across all y axes in a group. Defaulting to last value.")
+            if y_showline_values.pop() == False:
                 axis.add_option("axis y line", "none")
-
         if not trace_group:
             # if there aren't any traces, make the axes invisible
             axis.add_option("hide x axis", None)
@@ -179,7 +183,7 @@ def get_tikz_code(
                     warn("Adding empty trace.")
                     data_str.append( "\\addplot coordinates {};\n" )
                     continue
-                data_str.append( draw_heatmap(trace, fig, axis) )
+                data_str.append( draw_heatmap(trace, fig, img_name, axis) )
 
             elif trace.type == "bar":
                 data_str.append( draw_bar(trace, axis, {"height": height, "width": width, "n_bars": sum(len(trace.x) for trace in trace_group), "corloraxis": getattr(figure_layout, "coloraxis", None)}, colors_set) )
@@ -220,9 +224,12 @@ def get_tikz_code(
         for trace_str in data_str:
             code += trace_str
 
+        code += annotation_str  # TODO: it doesn't make sense to do this for every axis; i'm not sure what the correct behavior is in the case of multiple axes
+
         code += axis.close_environment(stack_env, groupplots=groupplots)
 
-    code += annotation_str
+    if figure_layout.showlegend == False:
+        code = re.sub(r"\\addlegendentry{.+}\n", "", code)
 
     code += tex_end_all_environment(stack_env)
 
@@ -242,12 +249,10 @@ def save(filepath, *args, **kwargs):
     directory = Path(filepath).parent
     if not directory.exists():
         directory.mkdir(parents=True)
-
     if "img_name" in kwargs:
         img_name = kwargs["img_name"]
     else:
         img_name = str(directory / "heatmap.png")
-
     code = get_tikz_code(*args, img_name=img_name, **kwargs)
     with open(filepath, "w") as fd:
         fd.write(code)

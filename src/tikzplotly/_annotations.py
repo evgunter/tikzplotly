@@ -86,8 +86,6 @@ def get_groupplots_coordinates(x, y, x_ref, y_ref, groupplots_info):
 
     return f"{x_coord_raw} - {x_offset}", f"{y_coord_raw} * {overall_height / overall_width} - {y_offset * overall_height / overall_width}"
 
-
-
 def str_from_annotation(annotation_list, axes: list[Axis], colors_set, groupplots_info=None):
     """Create a string of LaTeX code for the annotations of a figure.
 
@@ -131,5 +129,7 @@ def str_from_annotation(annotation_list, axes: list[Axis], colors_set, groupplot
             color_converted = convert_color(annotation.font.color)
             colors_set.add(color_converted[:3])
             node_options += f", color={color_converted[0]}"
-        annotation_str += tex_add_text(x_coordinate, y_coordinate, annotation.text, options=node_options, relative=relative and groupplots_info is None, axisless=groupplots_info is not None)
+        # TODO: presumably i added axisless for a reason, but i didn't actually add support for it.
+        # annotation_str += tex_add_text(x_coordinate, y_coordinate, annotation.text, options=node_options, relative=relative and groupplots_info is None, axisless=groupplots_info is not None)
+        annotation_str += tex_add_text(x_coordinate, y_coordinate, annotation.text, options=node_options, relative=relative and groupplots_info is None)
     return annotation_str

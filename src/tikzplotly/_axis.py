@@ -1,5 +1,4 @@
 from warnings import warn
-
 from ._color import convert_color
 from ._tex import tex_begin_environment, tex_end_environment
 from ._utils import sanitize_TeX_text, dict_to_tex_str

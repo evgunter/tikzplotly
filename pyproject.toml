@@ -25,6 +25,7 @@ keywords = ["plotly", "latex", "tikz", "figure", "conversion", "graphics"]
 dependencies = [
     "numpy",
     "plotly",
+    "kaleido",  # implicit dependency of plotly
     "pillow"
 ]
 
