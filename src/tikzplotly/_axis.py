@@ -1,4 +1,5 @@
 from warnings import warn
+
 from ._color import convert_color
 from ._tex import tex_begin_environment, tex_end_environment
 from ._utils import sanitize_TeX_text, dict_to_tex_str
@@ -16,9 +17,6 @@ class Axis():
         axis_options
             options given to the axis environment, by default None. Can be a dict ({option: value}) or a string ("option1=value1, option2=value2").
         """
-        self.x_label = layout.xaxis.title.text
-        self.y_label = layout.yaxis.title.text
-        self.title = layout.title.text
         self.options = {}
         if isinstance(axis_options, dict):
             self.options = axis_options
@@ -60,13 +58,11 @@ class Axis():
             self.add_option("y dir", "reverse")
 
         if layout.plot_bgcolor is not None:
-            bg_color = convert_color(layout.plot_bgcolor)
-            colors_set.add(bg_color[:3])
-            opacity = bg_color[3]
+            color_name, opacity = convert_color(layout.plot_bgcolor, colors_set)
             if opacity < 1:
-                self.add_option("axis background/.style", f"{{fill={bg_color[0]}, opacity={opacity}}}")
+                self.add_option("axis background/.style", f"{{fill={color_name}, opacity={opacity}}}")
             else:
-                self.add_option("axis background/.style", f"{{fill={bg_color[0]}}}")
+                self.add_option("axis background/.style", f"{{fill={color_name}}}")
 
     def set_x_label(self, x_label):
         """Set the x label.
@@ -191,7 +187,7 @@ class Axis():
 
         else:
             return tex_begin_environment(self.environment, stack_env, options=self.get_options_string())
-
+    
     def close_environment(self, stack_env, groupplots=False):
         """Close the axis environment.
 
@@ -213,11 +209,12 @@ class Axis():
         -------
             string of all options with their values
         """
-        if self.title is not None:
-            self.options["title"] = sanitize_TeX_text(self.title)
-        if self.x_label is not None:
-            self.options["xlabel"] = sanitize_TeX_text(self.x_label)
-        if self.y_label is not None:
-            self.options["ylabel"] = sanitize_TeX_text(self.y_label)
+        # TODO remove these warnings once sure they will no longer be triggered
+        if getattr(self, "title", None) is not None:
+            warn(f"axis field title is deprecated. set title as an option instead")
+        if getattr(self, "x_label", None) is not None:
+            warn(f"axis field xlabel is deprecated. set xlabel as an option instead")
+        if getattr(self, "y_label", None) is not None:
+            warn(f"axis field ylabel is deprecated. set ylabel as an option instead")
         options_str = dict_to_tex_str(self.options, sep="\n")
         return options_str

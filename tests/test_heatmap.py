@@ -13,7 +13,7 @@ pathlib.Path("/tmp/tikzplotly").mkdir(parents=True, exist_ok=True)
 def plot_1():
     fig = px.imshow([[1, 20, 30],
                     [20, 1, 60],
-                    [30, 60, 1]])
+                    [50, 60, 1]])
     return fig
 
 def plot_2():
@@ -59,16 +59,16 @@ def plot_5():
     return fig
 
 def test_1():
-    assert_equality(plot_1(), os.path.join(this_dir, test_name, test_name + "_1_reference.tex"), img_name="/tmp/tikzplotly/fig1.png")
+    assert_equality(plot_1(), os.path.join(this_dir, test_name, test_name + "_1_reference.tex"))
 
 def test_2():
-    assert_equality(plot_2(), os.path.join(this_dir, test_name, test_name + "_2_reference.tex"), img_name="/tmp/tikzplotly/fig2.png")
+    assert_equality(plot_2(), os.path.join(this_dir, test_name, test_name + "_2_reference.tex"))
 
 def test_3():
-    assert_equality(plot_3(), os.path.join(this_dir, test_name, test_name + "_3_reference.tex"), img_name="/tmp/tikzplotly/fig3.png")
+    assert_equality(plot_3(), os.path.join(this_dir, test_name, test_name + "_3_reference.tex"))
 
 def test_4():
-    assert_equality(plot_4(), os.path.join(this_dir, test_name, test_name + "_4_reference.tex"), img_name="/tmp/tikzplotly/fig4.png")
+    assert_equality(plot_4(), os.path.join(this_dir, test_name, test_name + "_4_reference.tex"))
 
 def test_5():
     assert_equality(plot_5(), os.path.join(this_dir, test_name, test_name + "_5_reference.tex"))

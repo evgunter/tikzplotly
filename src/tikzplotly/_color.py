@@ -9,8 +9,16 @@ def rgb_str(red, green, blue):
 
 colors = {}
 
-def convert_color(color):
-    """Convert of color to a string.
+def convert_color(color, colors_set):
+    name, _, _, opacity = convert_color_core(color, colors_set)
+    return name, opacity
+
+def color_to_tex(color, colors_set):
+    _, color_type, color_string, _ = convert_color_core(color, colors_set)
+    return color_type, color_string
+
+def convert_color_core(color, colors_set):
+    """Convert of color to a string, and, if necessary, add it to the colors set.
 
     Parameters
     ----------
@@ -29,30 +37,35 @@ def convert_color(color):
         - the color string
         - the opacity value, 1 if the color is not an rgba string
     """
+    # TODO: likely, some of the return values are redundant now that we're adding colors here
     if color is None:
-        return None, None, None, 1
+        color_name, color_type, color_string, opacity = None, None, None, 1
     if color[0] == "#":
-        return color[1:], "HTML", color[1:], 1
+        color_name, color_type, color_string, opacity = color[1:], "HTML", color[1:], 1
 
     elif color[0:4] == "rgba":
         sp = color.split("(")[1].split(",")
         rgb_color = sp[:-1]
-        rgb_color = convert_color(f"rgb({rgb_color[0]},{rgb_color[1]},{rgb_color[2]})")[:-1]
-        return rgb_color + (float(sp[-1][:-1]),)
+        rgb_color = convert_color(f"rgb({rgb_color[0]},{rgb_color[1]},{rgb_color[2]})", colors_set)[:-1]
+        color_name, color_type, color_string, opacity = rgb_color + (float(sp[-1][:-1]),)
 
     elif color[0:3] == "rgb":
         color = color[4:-1].replace("[", "{").replace("]", "}")
-        return hashlib.sha1(color.encode('UTF-8')).hexdigest()[:10], "RGB", color, 1
+        color_name, color_type, color_string, opacity = hashlib.sha1(color.encode('UTF-8')).hexdigest()[:10], "RGB", color, 1
 
     elif color in ["red", "green", "blue", "yellow", "orange", "purple", "brown", "black", "gray", "white"]:
-        return color, None, None, 1
+        color_name, color_type, color_string, opacity = color, None, None, 1
 
     elif color.lower() in colors:
-        return color.lower(), "RGB", colors[color.lower()], 1
+        color_name, color_type, color_string, opacity = color.lower(), "RGB", colors[color.lower()], 1
 
     else:
         warn(f"Color {color} type is not supported yet. Returning the same color.")
-        return color, 1
+        color_name, color_type, color_string, opacity = color, None, None, 1
+        return color, None, None, 1
+    
+    colors_set.add((color_name, color_type, color_string))
+    return color_name, color_type, color_string, opacity
 
 def hex2rgb(hex_color):
     """Convert a hex color to a RGB color.

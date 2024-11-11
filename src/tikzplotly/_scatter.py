@@ -9,27 +9,34 @@ from ._data import *
 from ._utils import px_to_pt, dict_to_tex_str, sanitize_text
 from numpy import round
 
-def draw_scatter2d(data_name, scatter, y_name, axis: Axis, color_set):
-    """Get code for a scatter trace.
+def draw_scatter2d(data_container, scatter, axis: Axis, colors_set):
+    """Get code for a scatter trace and add the trace's data to the data container.
 
     Parameters
     ----------
-    data_name
-        name of the data imported in LaTeX
+    data_container
+        data container that the data will be added to
     scatter
         scatter trace from Plotly figure
-    y_name
-        name of the y data imported in LaTeX
     axis
         axis object previously created
-    color_set
+    colors_set
         set of colors used in the figure
 
     Returns
     -------
         string of tikz code for the scatter trace
     """
-    code = ""
+    # Handle the case where x or y is empty
+    if scatter.x is None and scatter.y is None:
+        warn("Adding empty trace.")
+        return "\\addplot coordinates {};\n"
+    else:
+        if scatter.x is None:
+            scatter.x = list(range(len(scatter.y)))
+        if scatter.y is None:
+            scatter.y = list(range(len(scatter.x)))
+    data_name, y_name = data_container.addData(scatter.x, scatter.y, scatter.name)
 
     mode = scatter.mode
     marker = scatter.marker
@@ -37,7 +44,7 @@ def draw_scatter2d(data_name, scatter, y_name, axis: Axis, color_set):
     if data_type(scatter.x[0]) == "date":
         axis.add_option("date coordinates in", "x")
     if data_type(scatter.x[0]) == "month":
-        scatter_x_str = "{" + ", ".join([x for x in scatter.x]) + "}"
+        scatter_x_str = "{" + ", ".join([tex_text(str(x)) for x in scatter.x]) + "}"
         axis.add_option("xticklabels", scatter_x_str)
 
     if mode is None:
@@ -57,19 +64,16 @@ def draw_scatter2d(data_name, scatter, y_name, axis: Axis, color_set):
         else:
             options_dict["only marks"] = None
 
-        mark_options = ""
         if scatter.marker.size is not None:
             options_dict["mark size"] = px_to_pt(marker.size)
 
         if scatter.marker.color is not None:
-            color_set.add(convert_color(scatter.marker.color)[:3])
             mark_option_dict["solid"] = None
-            mark_option_dict["fill"] = convert_color(scatter.marker.color)[0]
+            mark_option_dict["fill"], _ = convert_color(scatter.marker.color, colors_set)
 
         if (line:=scatter.marker.line) is not None:
             if line.color is not None:
-                color_set.add(convert_color(line.color)[:3])
-                mark_option_dict["draw"] = convert_color(line.color)[0]
+                mark_option_dict["draw"], _ = convert_color(line.color, colors_set)
             if line.width is not None:
                 mark_option_dict["line width"] = px_to_pt(line.width)
 
@@ -82,8 +86,7 @@ def draw_scatter2d(data_name, scatter, y_name, axis: Axis, color_set):
             mark_option_dict["opacity"] = round(opacity, 2)
 
         if mark_option_dict != {}:
-            mark_options = dict_to_tex_str(mark_option_dict)
-            options_dict["mark options"] = f"{{{mark_options}}}"
+            options_dict["mark options"] = mark_option_dict
 
     elif mode == "lines":
         options_dict["mark"] = "none"
@@ -107,15 +110,13 @@ def draw_scatter2d(data_name, scatter, y_name, axis: Axis, color_set):
 
 
     if scatter.line.color is not None:
-        options_dict["color"] = convert_color(scatter.line.color)[0]
+        options_dict["color"], _ = convert_color(scatter.line.color, colors_set)
         if "mark" in mode:
-            mark_option_dict["draw"] = convert_color(scatter.line.color)[0]
+            mark_option_dict["draw"], _ = convert_color(scatter.line.color, colors_set)
             mark_option_dict["solid"] = None
 
     if scatter.fill is not None:
-        fill_color = convert_color(scatter.fillcolor)
-        opacity = fill_color[-1]
-        options_dict["fill"] = fill_color[0]
+        options_dict["fill"], opacity = convert_color(scatter.fillcolor, colors_set)
         if opacity < 1:
             options_dict["fill opacity"] = opacity
 
@@ -123,10 +124,11 @@ def draw_scatter2d(data_name, scatter, y_name, axis: Axis, color_set):
         options_dict["forget plot"] = None
 
     options = dict_to_tex_str(options_dict)
+    code = ""
     code += tex_addplot(data_name, type="table", options=options, type_options=f"y={sanitize_text(y_name)}")
 
     if scatter.text is not None:
         for x_data, y_data, text_data in zip(scatter.x, scatter.y, scatter.text):
-            code += tex_add_text(x_data, y_data, str(text_data).rstrip('.0'))
+            code += tex_add_text((x_data, y_data), str(text_data).rstrip('.0'))
 
     return code

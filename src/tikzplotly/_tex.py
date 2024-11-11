@@ -1,4 +1,5 @@
-from ._color import hex2rgb
+from ._color import color_to_tex, hex2rgb
+from warnings import warn
 
 def tex_comment(text):
     """Create a LaTeX comment.
@@ -68,7 +69,7 @@ def tex_end_all_environment(stack_env):
         code += tex_end_environment(stack_env)
     return code
 
-def tex_addplot(data_str, type="table", options=None, type_options=None):
+def tex_addplot(data_str, type="table", options=None, type_options=None, override=False, three_d=False, annotations_str=None):
     """Create a LaTeX addplot command.
 
     Parameters
@@ -81,40 +82,56 @@ def tex_addplot(data_str, type="table", options=None, type_options=None):
         options given to the addplot command, by default None
     type_options, optional
         options given to the type of data, by default None
+    override, optional
+        whether to use \addplot[options] instead of \addplot+ [options], by default False
 
     Returns
     -------
         LaTeX code for the addplot command
     """
-    code = "\\addplot+ "
+    code = "\\addplot"
+    if three_d:
+        code += "3"
+    if not override:
+        code += "+ "
     if options is not None:
         code += f"[{options}] "
     code += type
     if type_options is not None:
         code += f"[{type_options}]"
-    code += " {" + data_str + "};\n"
+    code += " {" + data_str + "}"
+    if annotations_str is not None:
+        code += annotations_str
+    code += ";\n"
     return code
 
-def tex_add_text(x, y, text, options=None, relative=False):
+def tex_add_text(coords, text, options=None, relative=False, axisless=False, symbolic=False):
     """Create a LaTeX node command.
 
     Parameters
     ----------
-    x
-        x coordinate of the node
-    y
-        y coordinate of the node
+    coords coordinates of the node: either (x, y) or symbolic (a string)
     text
         text of the node
     options, optional
         options given to the node command, by default None
     relative, optional
         boolean indicating if the coordinates are relative to the axis, by default False
-
+    axisless, optional
+        boolean indicating if axis coordinates are used, by default False
+        
     Returns
     -------
         LaTeX code for the node command
     """
+    if symbolic:
+        return f"\\node at ({coords}) {{{tex_text(text)}}};\n"
+    x, y = coords
+    if axisless:
+        if options is not None:
+            return f"\\node[{options}] at ({x}, {y}) {{{tex_text(text)}}};\n"
+        else:
+            return f"\\node at ({x},{y}) {{{tex_text(text)}}};\n"
     relative_text = ["", "rel "][relative]
     if options is not None:
         return f"\\node[{options}] at ({relative_text}axis cs:{x}, {y}) {{{tex_text(text)}}};\n"
@@ -191,13 +208,21 @@ def tex_text(text):
     """Convert a string to LaTeX,
     escaping the special characters %, _, &, #, $, {, }, ~.
     """
-    return text.replace("%", "\\%").replace("_", "\\_").replace("&", "\\&").replace("#", "\\#").replace("$", "\\$").replace("{", "\\{").replace("}", "\\}").replace("~", "\\textasciitilde ")
+    return text.replace("<br>", "\n").replace("\n", "\\\\ ").replace("%", "\\%").replace("_", "\\_").replace("&", "\\&").replace("#", "\\#").replace("$", "\\$").replace("{", "\\{").replace("}", "\\}").replace("~", "\\textasciitilde ")
 
-def get_tikz_colorscale(colorscale, name="mycolor"):
+def get_tikz_colorscale(colorscale, colors_set, name="mycolor"):
 
     code = "{" + str(name) + "}{\n"
     for dist, color in colorscale:
-        rgb_color = hex2rgb(color)
-        code += f"  rgb255({dist}cm)=({rgb_color})".replace(" ", "") + ";\n"
+        color_type, color_string = color_to_tex(color, colors_set)
+
+        if color_type == "RGB":
+            code += f"  rgb255({dist}cm)=({color_string})".replace(" ", "") + ";\n"
+        else:
+            if color_type != "HTML":
+                warn(f"Color {color} type is not supported. Assuming HTML.") 
+            rgb_color = hex2rgb(color)
+            code += f"  rgb255({dist}cm)=({rgb_color})".replace(" ", "") + ";\n"
     code += "}"
     return code
+

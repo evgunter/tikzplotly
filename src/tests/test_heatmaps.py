@@ -188,7 +188,7 @@ if __name__ == "__main__":
         print(f"Figure {i}")
         fig, title = f()
         save_path = os.path.join(file_directory, "outputs", "test_heatmap", "fig{}.tex".format(i))
-        tikzplotly.save(save_path, fig, img_name=os.path.join(file_directory, "outputs", "test_heatmap", "fig{}.png".format(i)))
+        tikzplotly.save(save_path, fig)
         main_tex_content += tex_begin_environment("figure", stack_env)
         main_tex_content += "  \\input{fig" + str(i) + ".tex}\n"
         main_tex_content += "  \\caption{" + title + "}\n"
